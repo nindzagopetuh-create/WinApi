@@ -1,0 +1,85 @@
+//#define _CRT_SECURE_NO_WARNINGS
+#include<Windows.h>
+#include<cstdio>
+#include"resource.h"
+
+CONST CHAR* g_sz_VALUES[] = { "This", "is", "my", "first", "Combo", "Box" };
+
+BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+/*
+---------------------------------
+HWND hwnd - Handler to Window, предтавляет окно.
+Handler (рукоять) - это дескриптор окна.
+hwnd нужен для того чтобы обратиться к окну.
+---------------------------------
+UINT uMsg (Message) - это сообщение.	SendMessage
+---------------------------------
+WPARAM wParam, LPARAM lParam - параметры сообщения. 0 или NULL
+---------------------------------
+EditControl, ComboBox, Button
+WM_ (WindowMessage) - применимы к любому окну;
+EM_ (EditMessage)	- применимы только к EditControl;
+CB_ (ComboBoxMsg)	- применимо только к ComboBox;
+---------------------------------
+Дочерние элементы окна, такие как кнопки, текстовые поля, выпадающие списки часто называют Controls,
+поскольку это элементы управления окном.
+Абсолютно у каждого элемента управления есть ID-реурса (ResourceID):IDOK, IDC_EDIT_LOGIN, IDC_COMBO....
+ResourceID - это самое обычное число типа DWORD (INT)
+По ResourceID всегда можно получить HWND соответствующего сообщения при помощи функции
+	GetDlgItem(hwnd,RESOURCE_ID)
+---------------------------------
+*/
+
+INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, INT nCmdShow)
+{
+	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc, 0);
+	return 0;
+}
+void Function(bool flag, int number, char symbol, double value);
+BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (uMsg)
+	{
+	case WM_INITDIALOG:
+	{
+		HWND hCombo = GetDlgItem(hwnd, IDC_COMBO1);
+		for (int i = 0; i < sizeof(g_sz_VALUES) / sizeof(g_sz_VALUES[0]); i++)
+		{
+			SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)g_sz_VALUES[i]);
+		}
+	}
+	break;
+	case WM_COMMAND:
+	{
+		switch (LOWORD(wParam))
+		{
+		case IDOK:
+		{
+			CONST INT SIZE = 256;
+			CHAR sz_buffer[SIZE]{};		//sz_ - String Zero (NULL Terminated Line)
+			CHAR sz_message[SIZE]{};	//sz_ - String Zero (NULL Terminated Line)
+			HWND hCombo = GetDlgItem(hwnd, IDC_COMBO1);
+			INT i = SendMessage(hCombo, CB_GETCURSEL, 0, 0);	//GetCurrentSelection - Получить текущий выбранный элемент
+			if (i != CB_ERR)
+			{
+				SendMessage(hCombo, CB_GETLBTEXT, i, (LPARAM)sz_buffer);
+				wsprintf(sz_message, "Вы выбрали элемент №%i со значением \"%s\".", i + 1, sz_buffer);
+				MessageBox(hwnd, sz_message, "Info", MB_OK | MB_ICONINFORMATION);
+			}
+			else
+			{
+				MessageBox(hwnd, "Вы ничего не выбрали", "Info", MB_OK | MB_ICONINFORMATION);
+			}
+		}
+		break;
+		case IDCANCEL:
+			EndDialog(hwnd, 0);
+			break;
+		}
+	}
+	break;
+	case WM_CLOSE:
+		EndDialog(hwnd, 0);
+	}
+	return FALSE;
+}
