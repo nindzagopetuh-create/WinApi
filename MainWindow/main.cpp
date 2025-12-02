@@ -87,14 +87,14 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, IN
 		"Child Button 1",
 		WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 		20, 50, 150, 30,
-		hwnd, NULL, hInstance, NULL);
+		hwnd, (HMENU)1, hInstance, NULL);
 
 	g_hChild2 = CreateWindow(
 		"STATIC",
 		"Child Static Text",
-		WS_CHILD | WS_VISIBLE | SS_LEFT,
+		WS_CHILD | WS_VISIBLE | SS_LEFT | SS_SUNKEN,
 		20, 100, 150, 30,
-		hwnd, NULL, hInstance, NULL);
+		hwnd, (HMENU)2, hInstance, NULL);
 
 	ShowWindow(hwnd, nCmdShow);
 	UpdateWindow(hwnd);
@@ -104,6 +104,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, IN
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0) > 0)
 	{
+		// Обновляем заголовок при движении мыши
+		if (msg.message == WM_MOUSEMOVE)
+		{
+			UpdateWindowTitle(hwnd);
+		}
+
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
@@ -119,6 +125,10 @@ void UpdateWindowTitle(HWND hwnd)
 
 	POINT cursorPos;
 	GetCursorPos(&cursorPos);
+
+	// Преобразуем координаты курсора в координаты относительно клиентской области
+	POINT clientCursorPos = cursorPos;
+	ScreenToClient(hwnd, &clientCursorPos);
 
 	// Проверяем, находится ли курсор над дочерними окнами
 	BOOL overChild1 = FALSE;
@@ -143,7 +153,8 @@ void UpdateWindowTitle(HWND hwnd)
 	title << "Window: X=" << rect.left << ", Y=" << rect.top
 		<< ", W=" << (rect.right - rect.left)
 		<< ", H=" << (rect.bottom - rect.top)
-		<< " | Cursor over child1: " << (overChild1 ? "Yes" : "No")
+		<< " | Cursor: X=" << cursorPos.x << ", Y=" << cursorPos.y
+		<< " | Over child1: " << (overChild1 ? "Yes" : "No")
 		<< ", child2: " << (overChild2 ? "Yes" : "No");
 
 	SetWindowTextA(hwnd, title.str().c_str());
@@ -168,31 +179,6 @@ void CenterWindowOnScreen(HWND hwnd, float percentage)
 	SetWindowPos(hwnd, NULL, windowX, windowY, windowWidth, windowHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-// Функция для проверки, находится ли курсор над дочерними окнами
-BOOL IsCursorOverChildWindow(HWND hwnd)
-{
-	POINT cursorPos;
-	GetCursorPos(&cursorPos);
-
-	if (g_hChild1)
-	{
-		RECT childRect;
-		GetWindowRect(g_hChild1, &childRect);
-		if (PtInRect(&childRect, cursorPos))
-			return TRUE;
-	}
-
-	if (g_hChild2)
-	{
-		RECT childRect;
-		GetWindowRect(g_hChild2, &childRect);
-		if (PtInRect(&childRect, cursorPos))
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
@@ -213,10 +199,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 	case WM_MOUSEMOVE:
 		// При движении мыши проверяем положение курсора и обновляем заголовок
+		// Эта строка важна - обновляем заголовок при каждом движении мыши
+		UpdateWindowTitle(hwnd);
+		break;
+
+	case WM_NCMOUSEMOVE:
+		// Также обновляем при движении мыши в неклиентской области (заголовок, рамки)
 		UpdateWindowTitle(hwnd);
 		break;
 
 	case WM_COMMAND:
+		// Обработка нажатия на кнопку
+		if (LOWORD(wParam) == 1) // ID кнопки
+		{
+			MessageBox(hwnd, "Button clicked!", "Info", MB_OK | MB_ICONINFORMATION);
+		}
 		break;
 
 	case WM_DESTROY:
