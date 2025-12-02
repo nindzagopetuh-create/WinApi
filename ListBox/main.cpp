@@ -1,14 +1,19 @@
+п»ї#define _CRT_SECURE_NO_WARNINGS
 #include<Windows.h>
 #include"resource.h"
 
 CONST CHAR* g_sz_VALUES[] = { "This", "is", "my", "first", "List", "Box" };
+CONST CHAR g_sz_FILENAME[] = "list.txt";
 
 BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK DlgProcAdd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL CALLBACK DlgProcEdit(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+VOID SaveList(HWND hwnd, CONST CHAR filename[]);
+VOID LoadList(HWND hwnd, CONST CHAR filename[]);
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, INT nCmdShow)
 {
+	//hInstance - СЌС‚Рѕ СЌРєР·РµРјРїР»СЏСЂ РёСЃРїРѕР»РЅСЏРµРјРѕРіРѕ С„Р°Р№Р»Р° РїСЂРѕРіСЂР°РјРјС‹, Р·Р°РіСЂСѓР¶РµРЅРЅРѕРіРѕ РІ РїР°РјСЏС‚СЊ (*.exe)
 	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_DIALOG_MAIN), NULL, (DLGPROC)DlgProc, 0);
 	return 0;
 }
@@ -19,15 +24,21 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 	{
-		HWND hListBox = GetDlgItem(hwnd, IDC_LIST1);
+		/*HWND hListBox = GetDlgItem(hwnd, IDC_LIST1);
 		for (int i = 0; i < sizeof(g_sz_VALUES) / sizeof(g_sz_VALUES[0]); i++)
-			SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)g_sz_VALUES[i]);
+			SendMessage(hListBox, LB_ADDSTRING, 0, (LPARAM)g_sz_VALUES[i]);*/
+		LoadList(hwnd, g_sz_FILENAME);
 	}
 	break;
 	case WM_COMMAND:
 	{
 		switch (LOWORD(wParam))
 		{
+		case IDC_LIST1:
+			if (HIWORD(wParam) == LBN_DBLCLK)
+				//GetModuleHandle(NULL);	//Р’РѕР·РІСЂР°С‰Р°РµС‚ 'hInstance' РЅР°С€РµР№ РїСЂРѕРіСЂР°РјРјС‹.
+				DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_ADD), hwnd, DlgProcEdit, 0);
+			break;
 		case IDC_BUTTON_ADD:
 		{
 			DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_ADD), hwnd, DlgProcAdd, 0);
@@ -37,38 +48,23 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			HWND hListBox = GetDlgItem(hwnd, IDC_LIST1);
 			INT i = SendMessage(hListBox, LB_GETCURSEL, 0, 0);
-			if (i != LB_ERR)
-				SendMessage(hListBox, LB_DELETESTRING, i, 0);
-		}
-		break;
-		case IDC_LIST1:
-		{
-			// Обработка двойного щелчка и нажатия Enter
-			if (HIWORD(wParam) == LBN_DBLCLK || (HIWORD(wParam) == 0 && LOWORD(wParam) == IDC_LIST1))
-			{
-				HWND hListBox = GetDlgItem(hwnd, IDC_LIST1);
-				INT i = SendMessage(hListBox, LB_GETCURSEL, 0, 0);
-				if (i != LB_ERR)
-				{
-					// Передаем индекс выбранного элемента в диалог редактирования
-					DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG_EDIT), hwnd, DlgProcEdit, i);
-				}
-			}
+			SendMessage(hListBox, LB_DELETESTRING, i, 0);
 		}
 		break;
 		case IDOK:
 			break;
 		case IDCANCEL:
+			SaveList(hwnd, g_sz_FILENAME);
 			EndDialog(hwnd, 0);
 		}
 	}
 	break;
 	case WM_CLOSE:
+		SaveList(hwnd, g_sz_FILENAME);
 		EndDialog(hwnd, 0);
 	}
 	return FALSE;
 }
-
 BOOL CALLBACK DlgProcAdd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
@@ -89,24 +85,16 @@ BOOL CALLBACK DlgProcAdd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			HWND hEdit = GetDlgItem(hwnd, IDC_EDIT);
 			SendMessage(hEdit, WM_GETTEXT, SIZE, (LPARAM)sz_buffer);
 
-			// Проверяем, что строка не пустая
-			if (strlen(sz_buffer) == 0)
-			{
-				MessageBox(hwnd, "Элемент не может быть пустым", "Warning", MB_OK | MB_ICONWARNING);
-				break;
-			}
-
 			HWND hParent = GetParent(hwnd);
 			HWND hList = GetDlgItem(hParent, IDC_LIST1);
 			if (SendMessage(hList, LB_FINDSTRINGEXACT, 0, (LPARAM)sz_buffer) == LB_ERR)
 				SendMessage(hList, LB_ADDSTRING, 0, (LPARAM)sz_buffer);
 			else
 			{
-				MessageBox(hwnd, "Такой элемент уже существует", "Warning", MB_OK | MB_ICONWARNING);
+				MessageBox(hwnd, "РўР°РєРѕР№ СЌР»РµРјРµРЅС‚ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚", "Warning", MB_OK | MB_ICONWARNING);
 				break;
 			}
 		}
-		// break; убран для закрытия диалога после добавления
 		case IDCANCEL:
 			EndDialog(hwnd, 0);
 		}
@@ -117,29 +105,23 @@ BOOL CALLBACK DlgProcAdd(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	return FALSE;
 }
-
-// Диалоговая процедура для редактирования элемента
 BOOL CALLBACK DlgProcEdit(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	static int nIndex; // Сохраняем индекс редактируемого элемента
-
+	CONST INT SIZE = 256;
+	CHAR sz_buffer[SIZE] = {};
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
 	{
-		nIndex = (int)lParam; // Получаем индекс из параметра
-
+		SendMessage(hwnd, WM_SETTEXT, 0, (LPARAM)"РР·РјРµРЅРёС‚СЊ");
+		HWND hEdit = GetDlgItem(hwnd, IDC_EDIT);
 		HWND hParent = GetParent(hwnd);
 		HWND hList = GetDlgItem(hParent, IDC_LIST1);
-
-		// Получаем текущий текст элемента
-		CHAR sz_buffer[256] = {};
-		SendMessage(hList, LB_GETTEXT, nIndex, (LPARAM)sz_buffer);
-
-		// Устанавливаем текст в поле редактирования
-		HWND hEdit = GetDlgItem(hwnd, IDC_EDIT);
+		INT i = SendMessage(hList, LB_GETCURSEL, 0, 0);
+		SendMessage(hList, LB_GETTEXT, i, (LPARAM)sz_buffer);
 		SendMessage(hEdit, WM_SETTEXT, 0, (LPARAM)sz_buffer);
 		SetFocus(hEdit);
+		SendMessage(hEdit, EM_SETSEL, strlen(sz_buffer), -1);
 	}
 	break;
 	case WM_COMMAND:
@@ -148,37 +130,18 @@ BOOL CALLBACK DlgProcEdit(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 		case IDOK:
 		{
-			CONST INT SIZE = 256;
-			CHAR sz_buffer[SIZE] = {};
 			HWND hEdit = GetDlgItem(hwnd, IDC_EDIT);
 			SendMessage(hEdit, WM_GETTEXT, SIZE, (LPARAM)sz_buffer);
 
-			// Проверяем, что строка не пустая
-			if (strlen(sz_buffer) == 0)
-			{
-				MessageBox(hwnd, "Элемент не может быть пустым", "Warning", MB_OK | MB_ICONWARNING);
-				break;
-			}
-
 			HWND hParent = GetParent(hwnd);
 			HWND hList = GetDlgItem(hParent, IDC_LIST1);
-
-			// Проверяем, не существует ли уже такой элемент (кроме текущего редактируемого)
-			int foundIndex = SendMessage(hList, LB_FINDSTRINGEXACT, 0, (LPARAM)sz_buffer);
-			if (foundIndex == LB_ERR || foundIndex == nIndex)
+			INT i = SendMessage(hList, LB_GETCURSEL, 0, 0);
+			if (SendMessage(hList, LB_FINDSTRINGEXACT, 0, (LPARAM)sz_buffer) == LB_ERR)
 			{
-				// Заменяем элемент
-				SendMessage(hList, LB_DELETESTRING, nIndex, 0);
-				SendMessage(hList, LB_INSERTSTRING, nIndex, (LPARAM)sz_buffer);
-				SendMessage(hList, LB_SETCURSEL, nIndex, 0);
-			}
-			else
-			{
-				MessageBox(hwnd, "Такой элемент уже существует", "Warning", MB_OK | MB_ICONWARNING);
-				break;
+				SendMessage(hList, LB_DELETESTRING, i, NULL);
+				SendMessage(hList, LB_ADDSTRING, 0, (LPARAM)sz_buffer);
 			}
 		}
-		// break; убран для закрытия диалога после сохранения
 		case IDCANCEL:
 			EndDialog(hwnd, 0);
 		}
@@ -188,4 +151,63 @@ BOOL CALLBACK DlgProcEdit(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		EndDialog(hwnd, 0);
 	}
 	return FALSE;
+}
+VOID SaveList(HWND hwnd, CONST CHAR filename[])
+{
+	CONST INT SIZE = 32768;
+	CHAR sz_buffer[SIZE] = {};
+
+	HWND hList = GetDlgItem(hwnd, IDC_LIST1);
+	INT n = SendMessage(hList, LB_GETCOUNT, 0, 0);
+
+	for (int i = 0; i < n; i++)
+	{
+		CHAR sz_item[256] = {};
+		SendMessage(hList, LB_GETTEXT, i, (LPARAM)sz_item);
+		strcat(sz_buffer, sz_item);
+		strcat(sz_buffer, "\n");
+		/*
+		-------------------
+		lstrcat(sz_buffer, sz_item);
+		lstrcat(sz_buffer, "\n");
+		-------------------
+		*/
+	}
+
+	HANDLE hFile = CreateFile
+	(
+		filename, 
+		GENERIC_WRITE, 
+		0, 
+		NULL, 
+		CREATE_ALWAYS, 
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+	DWORD dwBytesWritten = 0;
+	WriteFile(hFile, sz_buffer, strlen(sz_buffer), &dwBytesWritten, NULL);
+	CloseHandle(hFile);
+}
+VOID LoadList(HWND hwnd, CONST CHAR filename[])
+{
+	HANDLE hFile = CreateFile
+	(
+		filename,
+		GENERIC_READ,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+	DWORD dwError = GetLastError();
+	if (dwError == ERROR_FILE_NOT_FOUND)return;
+	CONST INT SIZE = 32768;
+	CHAR sz_buffer[SIZE] = {};
+	DWORD dwByteRead = 0;
+	ReadFile(hFile, sz_buffer, SIZE, &dwByteRead, NULL);
+	HWND hList = GetDlgItem(hwnd, IDC_LIST1);
+	for (char* pch = strtok(sz_buffer, "\n"); pch; pch = strtok(NULL, "\n"))
+		SendMessage(hList, LB_ADDSTRING, 0, (LPARAM)pch);
+	CloseHandle(hFile);
 }
